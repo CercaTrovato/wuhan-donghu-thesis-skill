@@ -1,0 +1,21 @@
+{
+  "name": "wuhan-donghu-thesis",
+  "displayName": "Wuhan Donghu Thesis",
+  "description": "Wuhan Donghu College thesis generation, formatting, and validation skill.",
+  "version": "0.1.0",
+  "author": {
+    "name": "CercaTrovato",
+    "email": "cercatrovato@gmail.com"
+  },
+  "homepage": "https://github.com/CercaTrovato/wuhan-donghu-thesis-skill",
+  "repository": "https://github.com/CercaTrovato/wuhan-donghu-thesis-skill",
+  "license": "MIT",
+  "keywords": [
+    "skills",
+    "thesis",
+    "docx",
+    "wuhan-donghu",
+    "word"
+  ],
+  "skills": "./skills/"
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "武汉东湖论文"
+  short_description: "武汉东湖学院毕业论文生成、排版与格式校验"
+  default_prompt: "Use $wuhan-donghu-thesis to generate or validate a Wuhan Donghu College thesis Word draft."
+policy:
+  allow_implicit_invocation: true

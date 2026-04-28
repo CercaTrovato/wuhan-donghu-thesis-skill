@@ -1,0 +1,21 @@
+{
+  "name": "wuhan-donghu-thesis",
+  "version": "0.1.0",
+  "description": "Wuhan Donghu College thesis generation, formatting, and validation skill.",
+  "type": "module",
+  "main": "./.opencode/plugins/wuhan-donghu-thesis.js",
+  "exports": "./.opencode/plugins/wuhan-donghu-thesis.js",
+  "files": [
+    "skills",
+    ".opencode",
+    "README.md"
+  ],
+  "keywords": [
+    "skills",
+    "thesis",
+    "docx",
+    "wuhan-donghu",
+    "opencode"
+  ],
+  "license": "MIT"
+}

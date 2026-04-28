@@ -1,0 +1,41 @@
+{
+  "name": "wuhan-donghu-thesis",
+  "version": "0.1.0",
+  "description": "Generate, format, and validate Wuhan Donghu College undergraduate thesis Word drafts.",
+  "author": {
+    "name": "CercaTrovato",
+    "email": "cercatrovato@gmail.com"
+  },
+  "homepage": "https://github.com/CercaTrovato/wuhan-donghu-thesis-skill",
+  "repository": "https://github.com/CercaTrovato/wuhan-donghu-thesis-skill",
+  "license": "MIT",
+  "keywords": [
+    "thesis",
+    "docx",
+    "word",
+    "wuhan-donghu",
+    "format-validation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Wuhan Donghu Thesis",
+    "shortDescription": "Generate and validate Wuhan Donghu College thesis .docx drafts",
+    "longDescription": "Use this plugin for Wuhan Donghu College undergraduate thesis Word drafts that need school-specific cover pages, declarations, abstracts, TOC, figures, tables, references, page numbers, and template comparison.",
+    "developerName": "CercaTrovato",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Generate a Wuhan Donghu College thesis draft from project materials.",
+      "Validate this thesis .docx against the Wuhan Donghu College format."
+    ],
+    "websiteURL": "https://github.com/CercaTrovato/wuhan-donghu-thesis-skill",
+    "privacyPolicyURL": "https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement",
+    "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+    "brandColor": "#0F766E",
+    "screenshots": []
+  }
+}
