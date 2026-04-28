@@ -19,6 +19,7 @@ $wdGoToPage = 1
 $wdGoToAbsolute = 1
 $wdFormatXMLDocument = 16
 $wdDoNotSaveChanges = 0
+$wdUndefined = 9999999
 
 if (-not (Test-Path -LiteralPath $SamplePath)) {
     throw "SamplePath not found: $SamplePath"
@@ -49,6 +50,64 @@ if ($ReplacementsJson) {
 $word = New-Object -ComObject Word.Application
 $word.Visible = $false
 $word.DisplayAlerts = 0
+
+function Set-FontPropertyIfConcrete {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Font,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PropertyName,
+
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return
+    }
+
+    $stringValue = [string]$Value
+    if ([string]::IsNullOrWhiteSpace($stringValue)) {
+        return
+    }
+    if ($stringValue.StartsWith("+")) {
+        return
+    }
+
+    $Font.$PropertyName = $Value
+}
+
+function Copy-CoverParagraphFont {
+    param(
+        [Parameter(Mandatory = $true)]
+        $SourceParagraph,
+
+        [Parameter(Mandatory = $true)]
+        $TargetParagraph
+    )
+
+    $srcFont = $SourceParagraph.Range.Font
+    $dstRange = $TargetParagraph.Range
+    $dstFont = $dstRange.Font
+
+    Set-FontPropertyIfConcrete -Font $dstFont -PropertyName "Name" -Value $srcFont.Name
+    Set-FontPropertyIfConcrete -Font $dstFont -PropertyName "NameAscii" -Value $srcFont.NameAscii
+    Set-FontPropertyIfConcrete -Font $dstFont -PropertyName "NameFarEast" -Value $srcFont.NameFarEast
+    Set-FontPropertyIfConcrete -Font $dstFont -PropertyName "NameOther" -Value $srcFont.NameOther
+
+    if ($srcFont.Size -gt 0) {
+        $dstFont.Size = $srcFont.Size
+    }
+    if ($srcFont.Bold -ne $wdUndefined) {
+        $dstFont.Bold = $srcFont.Bold
+    }
+    if ($srcFont.Italic -ne $wdUndefined) {
+        $dstFont.Italic = $srcFont.Italic
+    }
+
+    # Cover pages are fixed template pages; spell-check marks should not affect the delivered visual.
+    $dstRange.NoProofing = $true
+}
 
 try {
     $sample = $word.Documents.Open($SamplePath, $false, $true)
@@ -97,6 +156,8 @@ try {
         $dst.KeepWithNext = $src.KeepWithNext
         $dst.PageBreakBefore = $src.PageBreakBefore
         $dst.WidowControl = $src.WidowControl
+
+        Copy-CoverParagraphFont -SourceParagraph $sample.Paragraphs.Item($i) -TargetParagraph $doc.Paragraphs.Item($i)
     }
 
     $doc.SaveAs([ref]$workPath, [ref]$wdFormatXMLDocument)
