@@ -109,6 +109,194 @@ function Copy-CoverParagraphFont {
     $dstRange.NoProofing = $true
 }
 
+function Get-DisplayWidth {
+    param([string]$Text)
+
+    $width = 0
+    foreach ($ch in $Text.ToCharArray()) {
+        $code = [int][char]$ch
+        if ($ch -eq "`t" -or $ch -eq "`r" -or $ch -eq "`n") {
+            continue
+        }
+        if ($ch -eq " " -or $code -lt 128) {
+            $width += 1
+        }
+        else {
+            $width += 2
+        }
+    }
+    return $width
+}
+
+function Get-ParagraphPlainText {
+    param($Paragraph)
+    return ([string]$Paragraph.Range.Text).TrimEnd([char]13, [char]7)
+}
+
+function Get-FieldLabel {
+    param($Paragraph)
+
+    $text = Get-ParagraphPlainText -Paragraph $Paragraph
+    $colon = [char]0xFF1A
+    $index = $text.IndexOf($colon)
+    if ($index -lt 0) {
+        return ""
+    }
+    return $text.Substring(0, $index + 1)
+}
+
+function Get-SuffixValue {
+    param(
+        $Paragraph
+    )
+
+    $label = Get-FieldLabel -Paragraph $Paragraph
+    if ([string]::IsNullOrEmpty($label)) {
+        return ""
+    }
+    $text = Get-ParagraphPlainText -Paragraph $Paragraph
+    $index = $text.IndexOf($label)
+    if ($index -lt 0) {
+        return ""
+    }
+    return $text.Substring($index + $label.Length).Trim()
+}
+
+function Get-SuffixDisplayWidth {
+    param(
+        $Paragraph
+    )
+
+    $label = Get-FieldLabel -Paragraph $Paragraph
+    if ([string]::IsNullOrEmpty($label)) {
+        return 0
+    }
+    $text = Get-ParagraphPlainText -Paragraph $Paragraph
+    $index = $text.IndexOf($label)
+    if ($index -lt 0) {
+        return 0
+    }
+    $suffix = $text.Substring($index + $label.Length)
+    return Get-DisplayWidth -Text $suffix
+}
+
+function New-CenteredUnderlineSlot {
+    param(
+        [string]$Value,
+        [int]$SlotWidth
+    )
+
+    $cleanValue = $Value.Trim()
+    $valueWidth = Get-DisplayWidth -Text $cleanValue
+    if ($valueWidth -ge $SlotWidth) {
+        return $cleanValue
+    }
+
+    $pad = $SlotWidth - $valueWidth
+    $leftPad = [Math]::Floor($pad / 2)
+    $rightPad = $pad - $leftPad
+    return (" " * $leftPad) + $cleanValue + (" " * $rightPad)
+}
+
+function Set-FixedUnderlinedField {
+    param(
+        $Document,
+        [int]$ParagraphIndex,
+        [int]$SlotWidth
+    )
+
+    $paragraph = $Document.Paragraphs.Item($ParagraphIndex)
+    $label = Get-FieldLabel -Paragraph $paragraph
+    if ([string]::IsNullOrEmpty($label)) {
+        return
+    }
+    $text = Get-ParagraphPlainText -Paragraph $paragraph
+    $labelIndex = $text.IndexOf($label)
+    if ($labelIndex -lt 0) {
+        return
+    }
+
+    $value = Get-SuffixValue -Paragraph $paragraph
+    $slotText = New-CenteredUnderlineSlot -Value $value -SlotWidth $SlotWidth
+
+    $suffixStart = $paragraph.Range.Start + $labelIndex + $label.Length
+    $suffixEnd = $paragraph.Range.End - 1
+    if ($suffixEnd -lt $suffixStart) {
+        $suffixEnd = $suffixStart
+    }
+
+    $suffixRange = $Document.Range($suffixStart, $suffixEnd)
+    $suffixRange.Text = $slotText
+
+    $paragraph = $Document.Paragraphs.Item($ParagraphIndex)
+    $label = Get-FieldLabel -Paragraph $paragraph
+    if ([string]::IsNullOrEmpty($label)) {
+        return
+    }
+    $text = Get-ParagraphPlainText -Paragraph $paragraph
+    $labelIndex = $text.IndexOf($label)
+    if ($labelIndex -lt 0) {
+        return
+    }
+
+    $suffixStart = $paragraph.Range.Start + $labelIndex + $label.Length
+    $suffixEnd = $paragraph.Range.End - 1
+    if ($suffixEnd -lt $suffixStart) {
+        $suffixEnd = $suffixStart
+    }
+
+    $labelRange = $Document.Range($paragraph.Range.Start, $suffixStart)
+    $suffixRange = $Document.Range($suffixStart, $suffixEnd)
+    $labelRange.Font.Underline = 0
+    $suffixRange.Font.Underline = 1
+    $paragraph.Range.NoProofing = $true
+}
+
+function Get-MaxSuffixWidth {
+    param(
+        $Document,
+        [object[]]$Fields
+    )
+
+    $maxWidth = 0
+    foreach ($field in $Fields) {
+        $paragraph = $Document.Paragraphs.Item([int]$field.ParagraphIndex)
+        $width = Get-SuffixDisplayWidth -Paragraph $paragraph
+        if ($width -gt $maxWidth) {
+            $maxWidth = $width
+        }
+    }
+    return $maxWidth
+}
+
+function Normalize-FixedUnderlineFields {
+    param(
+        $SampleDocument,
+        $TargetDocument
+    )
+
+    $identifierFields = @(
+        [pscustomobject]@{ ParagraphIndex = 2 },
+        [pscustomobject]@{ ParagraphIndex = 3 }
+    )
+    $coverInfoFields = @(
+        [pscustomobject]@{ ParagraphIndex = 15 },
+        [pscustomobject]@{ ParagraphIndex = 16 },
+        [pscustomobject]@{ ParagraphIndex = 17 },
+        [pscustomobject]@{ ParagraphIndex = 18 }
+    )
+
+    $identifierSlotWidth = Get-MaxSuffixWidth -Document $SampleDocument -Fields $identifierFields
+    $coverInfoSlotWidth = Get-MaxSuffixWidth -Document $SampleDocument -Fields $coverInfoFields
+
+    foreach ($field in $identifierFields) {
+        Set-FixedUnderlinedField -Document $TargetDocument -ParagraphIndex ([int]$field.ParagraphIndex) -SlotWidth $identifierSlotWidth
+    }
+    foreach ($field in $coverInfoFields) {
+        Set-FixedUnderlinedField -Document $TargetDocument -ParagraphIndex ([int]$field.ParagraphIndex) -SlotWidth $coverInfoSlotWidth
+    }
+}
+
 try {
     $sample = $word.Documents.Open($SamplePath, $false, $true)
     $doc = $word.Documents.Open($workPath, $false, $false)
@@ -159,6 +347,8 @@ try {
 
         Copy-CoverParagraphFont -SourceParagraph $sample.Paragraphs.Item($i) -TargetParagraph $doc.Paragraphs.Item($i)
     }
+
+    Normalize-FixedUnderlineFields -SampleDocument $sample -TargetDocument $doc
 
     $doc.SaveAs([ref]$workPath, [ref]$wdFormatXMLDocument)
     $doc.Close([ref]$wdDoNotSaveChanges)

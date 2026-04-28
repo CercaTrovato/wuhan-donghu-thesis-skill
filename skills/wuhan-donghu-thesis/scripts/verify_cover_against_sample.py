@@ -72,24 +72,43 @@ def run_east_asia_font(r: etree._Element) -> str | None:
     return w_attr(r.find("w:rPr/w:rFonts", NS), "eastAsia")
 
 
-def suffix_runs(p: etree._Element, label: str) -> list[etree._Element]:
-    runs: list[etree._Element] = []
-    seen_label = False
+def suffix_run_texts(p: etree._Element, label: str) -> list[tuple[etree._Element, str]]:
+    full_text = paragraph_text(p)
+    label_start = full_text.find(label)
+    if label_start < 0:
+        return []
+    label_end = label_start + len(label)
+
+    runs: list[tuple[etree._Element, str]] = []
+    position = 0
     for r in p.xpath("./w:r", namespaces=NS):
         txt = run_text(r)
-        if not seen_label:
-            if label in txt:
-                seen_label = True
-                tail = txt.split(label, 1)[1]
-                if tail:
-                    runs.append(r)
+        next_position = position + len(txt)
+        if next_position <= label_end:
+            position = next_position
             continue
-        runs.append(r)
+        if position >= label_end:
+            runs.append((r, txt))
+        else:
+            runs.append((r, txt[label_end - position :]))
+        position = next_position
     return runs
 
 
 def underlined_suffix_text(p: etree._Element, label: str) -> str:
-    return "".join(run_text(r) for r in suffix_runs(p, label) if run_is_underlined(r))
+    return "".join(txt for r, txt in suffix_run_texts(p, label) if run_is_underlined(r))
+
+
+def display_width(text: str) -> int:
+    width = 0
+    for ch in text:
+        if ch in "\t\r\n":
+            continue
+        if ch == " " or ord(ch) < 128:
+            width += 1
+        else:
+            width += 2
+    return width
 
 
 def load_paragraphs(path: Path) -> list[etree._Element]:
@@ -113,7 +132,7 @@ class LineSignature:
 
 
 def find_line(paragraphs: list[etree._Element], label: str) -> LineSignature | None:
-    for index, p in enumerate(paragraphs[:15], start=1):
+    for index, p in enumerate(paragraphs[:25], start=1):
         text = paragraph_text(p)
         if not text.startswith(label):
             continue
@@ -121,7 +140,7 @@ def find_line(paragraphs: list[etree._Element], label: str) -> LineSignature | N
         runs = p.xpath("./w:r", namespaces=NS)
         label_run = next((r for r in runs if label in run_text(r)), None)
         underlined = underlined_suffix_text(p, label)
-        first_suffix_run = next((r for r in suffix_runs(p, label) if run_text(r)), None)
+        first_suffix_run = next((r for r, txt in suffix_run_texts(p, label) if txt), None)
 
         return LineSignature(
             index=index,
@@ -175,12 +194,51 @@ def compare_line(
             f"{label}: 下划线内容长度 {len(suffix)} 小于范本基准 {sample.suffix_min_len}"
         )
 
-    for r in suffix_runs(candidate.paragraph, label):
-        txt = run_text(r)
+    for r, txt in suffix_run_texts(candidate.paragraph, label):
         if txt and not run_is_underlined(r):
             failures.append(f"{label}: 冒号后存在未加下划线的 run：{txt!r}")
         if " " in txt and not run_has_preserved_space(r):
             failures.append(f"{label}: 下划线空格未使用 xml:space='preserve'")
+
+
+def compare_fixed_slot_group(
+    failures: list[str],
+    *,
+    group_name: str,
+    labels: list[str],
+    sample_paragraphs: list[etree._Element],
+    candidate_paragraphs: list[etree._Element],
+) -> None:
+    sample_widths: dict[str, int] = {}
+    candidate_widths: dict[str, int] = {}
+
+    for label in labels:
+        sample = find_line(sample_paragraphs, label)
+        candidate = find_line(candidate_paragraphs, label)
+        if sample is None:
+            failures.append(f"{group_name}/{label}: 范本中未找到字段行")
+            continue
+        if candidate is None:
+            failures.append(f"{group_name}/{label}: 候选文档中未找到字段行")
+            continue
+        sample_widths[label] = display_width(underlined_suffix_text(sample.paragraph, label))
+        candidate_widths[label] = display_width(underlined_suffix_text(candidate.paragraph, label))
+
+    if not sample_widths or not candidate_widths:
+        return
+
+    expected_width = max(sample_widths.values())
+    for label, actual_width in candidate_widths.items():
+        if actual_width != expected_width:
+            failures.append(
+                f"{group_name}/{label}: 下划线固定槽显示宽度 {actual_width}，应与范本同组宽度 {expected_width} 一致"
+            )
+
+    unique_candidate_widths = sorted(set(candidate_widths.values()))
+    if len(unique_candidate_widths) > 1:
+        failures.append(
+            f"{group_name}: 同组字段下划线宽度不一致，当前为 {', '.join(map(str, unique_candidate_widths))}"
+        )
 
 
 def run_checks(
@@ -207,6 +265,21 @@ def run_checks(
         candidate_gap = candidate_archive.index - candidate_student.index
         if candidate_gap != sample_gap:
             failures.append(f"学号/档号: 两行间距结构 {candidate_gap} 与范本 {sample_gap} 不一致")
+
+    compare_fixed_slot_group(
+        failures,
+        group_name="学号/档号",
+        labels=["学号：", "档号："],
+        sample_paragraphs=sample_paragraphs,
+        candidate_paragraphs=candidate_paragraphs,
+    )
+    compare_fixed_slot_group(
+        failures,
+        group_name="封面信息栏",
+        labels=["院（系）名称：", "专业名称：", "学生姓名：", "指导教师："],
+        sample_paragraphs=sample_paragraphs,
+        candidate_paragraphs=candidate_paragraphs,
+    )
 
     return failures
 
