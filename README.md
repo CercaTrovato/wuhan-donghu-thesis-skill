@@ -91,6 +91,13 @@ gemini extensions install https://github.com/CercaTrovato/wuhan-donghu-thesis-sk
 
 Full thesis automation still requires Windows + Microsoft Word desktop COM for high-fidelity cover copying, TOC/page-number refresh, and front-matter pagination validation. See `skills/wuhan-donghu-thesis/references/platform-compatibility.md` for the exact requirements and non-Windows fallback.
 
+## Validation Additions
+
+The skill includes reusable validators for the recurring Wuhan Donghu thesis failures found in real drafts:
+
+- `verify_monochrome_diagrams.py`: checks structural, process, module, deployment, AI-flow, and E-R diagrams for pure white background with black text/lines only.
+- `verify_project_content_completeness.py`: checks a draft against a project-specific JSON list of required APIs, views, tables/models, AI features, and E-R themes.
+
 ## Contents
 
 - `skills/wuhan-donghu-thesis/`: skill entry point, references, scripts, and assets.

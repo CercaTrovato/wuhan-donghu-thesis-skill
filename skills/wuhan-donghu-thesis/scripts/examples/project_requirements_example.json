@@ -1,0 +1,117 @@
+{
+  "required_terms": [
+    {
+      "label": "后端健康检查接口",
+      "terms": ["/api/health"]
+    },
+    {
+      "label": "注册接口",
+      "terms": ["POST /api/auth/register"]
+    },
+    {
+      "label": "登录接口",
+      "terms": ["POST /api/auth/login"]
+    },
+    {
+      "label": "用户查询接口",
+      "terms": ["GET /api/users/{user_id}"]
+    },
+    {
+      "label": "任务列表接口",
+      "terms": ["GET /api/tasks"]
+    },
+    {
+      "label": "任务创建接口",
+      "terms": ["POST /api/tasks"]
+    },
+    {
+      "label": "任务更新接口",
+      "terms": ["PATCH /api/tasks/{task_id}"]
+    },
+    {
+      "label": "任务删除接口",
+      "terms": ["DELETE /api/tasks/{task_id}"]
+    },
+    {
+      "label": "工时列表接口",
+      "terms": ["GET /api/time-logs"]
+    },
+    {
+      "label": "工时创建接口",
+      "terms": ["POST /api/time-logs"]
+    },
+    {
+      "label": "总览接口",
+      "terms": ["GET /api/dashboard/{user_id}"]
+    },
+    {
+      "label": "效率趋势接口",
+      "terms": ["GET /api/analytics/efficiency/{user_id}"]
+    },
+    {
+      "label": "AI耗时预测接口",
+      "terms": ["POST /api/ai/predict-duration"]
+    },
+    {
+      "label": "任务风险接口",
+      "terms": ["GET /api/ai/task-risk/{task_id}"]
+    },
+    {
+      "label": "前端总览视图",
+      "terms": ["总览", "管理概况"]
+    },
+    {
+      "label": "前端任务管理视图",
+      "terms": ["任务管理", "计划与执行"]
+    },
+    {
+      "label": "前端时间记录视图",
+      "terms": ["时间记录", "工时回溯"]
+    },
+    {
+      "label": "前端效率分析视图",
+      "terms": ["效率分析", "趋势评估"]
+    },
+    {
+      "label": "前端AI预测视图",
+      "terms": ["AI 预测", "耗时与风险"]
+    },
+    {
+      "label": "持久化用户实体",
+      "terms": ["users", "User", "用户表"]
+    },
+    {
+      "label": "持久化任务实体",
+      "terms": ["tasks", "Task", "任务表"]
+    },
+    {
+      "label": "持久化时间记录实体",
+      "terms": ["time_logs", "TimeLog", "时间记录表"]
+    },
+    {
+      "label": "持久化效率统计实体",
+      "terms": ["efficiency_stats", "EfficiencyStat", "效率统计表"]
+    },
+    {
+      "label": "AI预测特征",
+      "terms": ["priority_weight", "description_length", "title_length", "estimated_minutes"]
+    },
+    {
+      "label": "样本不足启发式回退",
+      "terms": ["历史样本不足", "启发式"]
+    }
+  ],
+  "er_caption_pattern": "图3-5.*E-R",
+  "er_required_terms": [
+    "用户",
+    "任务",
+    "时间记录",
+    "效率统计",
+    "系统总览",
+    "效率趋势",
+    "AI耗时预测",
+    "延期风险评估",
+    "演示数据初始化",
+    "本地部署配置"
+  ]
+}

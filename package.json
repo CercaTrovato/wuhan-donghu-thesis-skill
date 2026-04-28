@@ -1,6 +1,6 @@
 {
   "name": "wuhan-donghu-thesis",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Wuhan Donghu College thesis generation, formatting, and validation skill.",
   "type": "module",
   "main": "./.opencode/plugins/wuhan-donghu-thesis.js",

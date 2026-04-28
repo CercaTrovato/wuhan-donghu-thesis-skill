@@ -13,6 +13,8 @@
 3. Word 自动更新目录后重新写入默认缩进，导致目录视觉偏离范本。
 4. 页码域、TOC 域在 `officecli`、LibreOffice 或 WPS 中显示不完整，需要 Microsoft Word 分页引擎更新。
 5. 中文路径在 Windows PowerShell 5 中可能被非 UTF-8 解释，导致脚本打开错误路径。
+6. 图在 Word 中看似接近范本，但实际包含灰色填充、彩色像素、字体不一致或图题跨页。
+7. 论文正文篇幅够长但漏写源码中已经实现的 API、前端视图、AI 特征或 E-R 业务主题。
 
 因此，自动化脚本的核心任务不是“替代格式指南”，而是把指南中的规则变成可重复执行、可验收的 Word 操作。
 
@@ -98,6 +100,48 @@
 
 这一步必须在 Word 更新目录之后做。原因是 Word 更新目录时可能重新生成目录段落，并把默认缩进写回 XML。如果先改 XML 再更新目录，格式可能被 Word 覆盖。
 
+### 2.4 黑白图形检查脚本
+
+代表脚本：`scripts/verify_monochrome_diagrams.py`
+
+原理：
+
+1. 从 `.docx` 的图片段落和后续图题段落建立关联。
+2. 只检查图题命中“结构、模块、流程、E-R、ER、用例、部署、业务、接口、预测”等关键词的图，默认排除界面截图和代码截图。
+3. 读取图片像素，统计白色背景、黑色线条/文字、浅灰像素和彩色像素比例。
+4. 若浅灰填充或彩色像素超过阈值，判定为失败。
+
+适用场景：
+
+- 结构图、流程图、模块图、部署图、接口调用图、E-R 图和 AI 流程图的风格验收。
+- 发现 matplotlib、Graphviz、PPT/Word 形状默认主题色、灰底或混色字体污染。
+
+注意：
+
+- 该脚本不能判断图中文字是否越框，仍必须导出 PDF/PNG 做截图检查。
+- 若图题和图片跨页，仅靠 XML 可能不够，必须检查渲染结果。生成脚本应把图片段落设置为 `keep_with_next=True` 和 `keep_together=True`，把图题段落设置为 `keep_together=True`。
+
+### 2.5 项目内容完整性检查脚本
+
+代表脚本：`scripts/verify_project_content_completeness.py`
+
+原理：
+
+1. 读取项目专用 requirements JSON。
+2. 从 `.docx` 抽取全文可见文本、图题上下文和图片替代文本。
+3. 检查正文是否出现源码证据要求的 API、前端视图、模型/表名、AI 特征、回退逻辑等术语。
+4. 单独检查总 E-R 图上下文，确认必需业务主题没有遗漏。
+
+适用场景：
+
+- 确认论文没有漏写源码已经实现的功能。
+- 确认总 E-R 图不是过度简化版本。
+
+注意：
+
+- requirements JSON 必须由当前项目源码生成，不能直接复用其他论文的清单。
+- 该脚本检查覆盖性，不替代人工判断章节文字是否通顺、论证是否合理。
+
 ## 3. 目录 OpenXML 推荐参数
 
 目录项应具备以下 XML 结构或等效格式：
@@ -127,7 +171,8 @@
 7. 用 `officecli validate <docx>` 验证文档结构。
 8. 用 `officecli view <docx> outline` 检查标题层级。
 9. 解包检查目录段落：不得有硬编码 `……`，`TOC1/TOC2/TOC3` 的缩进、行距、制表位必须符合规范。
-10. 导出 PDF/PNG，与范本页面做视觉核对。
+10. 执行黑白图形检查和项目内容完整性检查。
+11. 导出 PDF/PNG，与范本页面做视觉核对。
 
 ## 4.1 scripts 目录调用示例
 
@@ -154,6 +199,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify_cover_rend
 python ".\scripts\verify_front_matter_layout.py" ".\论文初稿_封面修正版.docx" `
   --title-cn "中文论文题目" `
   --title-en "English Thesis Title"
+
+python ".\scripts\verify_monochrome_diagrams.py" ".\论文初稿_封面修正版.docx"
+
+python ".\scripts\verify_project_content_completeness.py" ".\论文初稿_封面修正版.docx" `
+  --requirements ".\project_requirements.json"
 ```
 
 当修改指南、脚本或生成器后，应执行全量格式回归测试：
@@ -241,6 +291,23 @@ Key words 在目录之前
 空段的段落标记字号：声明正文后的空段应为 14 pt
 w:pPr/w:rPr/w:sz 与 w:szCs 是否同时写入
 docGrid linePitch 是否被 python-docx 默认写成 360
+```
+
+结构图、流程图、E-R 图还应执行黑白图形检查，至少确认：
+
+```text
+CHECKED_DIAGRAMS > 0
+MONOCHROME_DIAGRAM_CHECK=PASS
+每个结构/流程/E-R 类图的 white_ratio 足够高
+light_gray_ratio 和 chroma_ratio 未超过阈值
+```
+
+项目内容还应执行源码覆盖检查，至少确认：
+
+```text
+PROJECT_CONTENT_COMPLETENESS=PASS
+required_terms 覆盖后端 API、前端视图、模型/表名、AI 特征和回退逻辑
+er_required_terms 覆盖总 E-R 图应出现的物理实体与逻辑主题
 ```
 
 ## 7. 给后续 agent 的判断规则

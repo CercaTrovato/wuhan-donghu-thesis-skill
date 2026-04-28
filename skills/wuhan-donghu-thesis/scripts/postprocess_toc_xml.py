@@ -19,7 +19,7 @@ TABLE_STYLE_ID = "af"
 TABLE_WIDTHS_BY_COLS = {
     3: ["1744", "2616", "4360"],
     5: ["1245", "2491", "2492", "1246", "1246"],
-    6: ["1453", "1453", "1453", "1453", "1262", "1646"],
+    6: ["1700", "1300", "850", "1200", "1250", "2420"],
 }
 
 
@@ -314,9 +314,14 @@ def patch_table(table) -> None:
     col_count = max(len(row.findall("w:tc", NS)) for row in rows)
     widths = TABLE_WIDTHS_BY_COLS.get(col_count)
     if not widths:
-        base = int(int(TABLE_WIDTH_DXA) / col_count)
-        widths = [str(base)] * col_count
-        widths[-1] = str(int(TABLE_WIDTH_DXA) - base * (col_count - 1))
+        old_grid = table.find("w:tblGrid", NS)
+        old_widths = [col.get(qn("w")) for col in old_grid.findall("w:gridCol", NS)] if old_grid is not None else []
+        if len(old_widths) == col_count and sum(int(w or "0") for w in old_widths) == int(TABLE_WIDTH_DXA):
+            widths = old_widths
+        else:
+            base = int(int(TABLE_WIDTH_DXA) / col_count)
+            widths = [str(base)] * col_count
+            widths[-1] = str(int(TABLE_WIDTH_DXA) - base * (col_count - 1))
 
     tbl_pr = table.find("w:tblPr", NS)
     if tbl_pr is None:
