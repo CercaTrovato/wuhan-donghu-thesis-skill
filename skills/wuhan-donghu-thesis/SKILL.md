@@ -58,6 +58,10 @@ python ".\scripts\verify_front_matter_layout.py" ".\论文初稿_封面修正版
 python ".\scripts\verify_toc_xml.py" ".\论文初稿_封面修正版.docx"
 python ".\scripts\verify_cover_identifiers_and_length.py" ".\论文初稿_封面修正版.docx" `
   --student-id "2022040731173"
+python ".\scripts\verify_cover_against_sample.py" `
+  --sample ".\范本.docx" `
+  --candidate ".\论文初稿_封面修正版.docx" `
+  --student-id "2022040731173"
 python ".\scripts\verify_figure_table_layout.py" ".\论文初稿_封面修正版.docx"
 officecli validate ".\论文初稿_封面修正版.docx"
 officecli view ".\论文初稿_封面修正版.docx" outline
@@ -79,6 +83,7 @@ Fresh verification is mandatory. Minimum evidence:
 
 - `verify_front_matter_layout.py`: `FRONT_MATTER_CHECK=PASS`
 - `verify_cover_identifiers_and_length.py`: `COVER_IDENTIFIERS_AND_LENGTH_CHECK=PASS`, `NONSPACE_VISIBLE_CHARS >= 20000`
+- `verify_cover_against_sample.py`: `COVER_SAMPLE_COMPARISON=PASS` when `范本.docx` is available, especially after changing 学号 or 档号
 - `verify_toc_xml.py`: `BAD_IND=0`, `BAD_SPACING=0`, `BAD_TABS=0`, `HARDCODED_LEADERS=0`
 - `verify_figure_table_layout.py`: `PASS: figure/table layout checks passed`
 - `officecli validate`: no schema errors in output

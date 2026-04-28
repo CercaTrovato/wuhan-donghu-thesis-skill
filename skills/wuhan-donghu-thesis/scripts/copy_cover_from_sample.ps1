@@ -40,7 +40,10 @@ Copy-Item -LiteralPath $DraftPath -Destination $workPath -Force
 $replacements = @()
 if ($ReplacementsJson) {
     $raw = Get-Content -LiteralPath $ReplacementsJson -Raw -Encoding UTF8
-    $replacements = @($raw | ConvertFrom-Json)
+    $parsedReplacements = $raw | ConvertFrom-Json
+    if ($null -ne $parsedReplacements) {
+        $replacements = $parsedReplacements
+    }
 }
 
 $word = New-Object -ComObject Word.Application
