@@ -54,6 +54,7 @@
 4. 删除目标论文原有前两页，将范本前两页插入目标论文文首。
 5. 只替换学号、题目、专业、学生、指导教师、日期等字段文本，不重建版面。
 6. 再把范本前 47 个段落的直接段落格式重新应用到目标文档，防止目标文档 `Normal` 样式污染封面。
+7. 对第 2、3、15、16、17、18 段用 Word 的实际渲染坐标校准固定下划线槽；不要用字符数或“中文双宽/英文单宽”估算。
 
 为什么这样做：
 
@@ -146,6 +147,10 @@ python ".\scripts\verify_toc_xml.py" ".\论文初稿_封面修正版.docx"
 python ".\scripts\verify_cover_identifiers_and_length.py" ".\论文初稿_封面修正版.docx" `
   --student-id "2022040731173"
 
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify_cover_rendered_alignment.ps1" `
+  -SamplePath ".\范本.docx" `
+  -CandidatePath ".\论文初稿_封面修正版.docx"
+
 python ".\scripts\verify_front_matter_layout.py" ".\论文初稿_封面修正版.docx" `
   --title-cn "中文论文题目" `
   --title-en "English Thesis Title"
@@ -212,6 +217,7 @@ COVER_IDENTIFIERS_AND_LENGTH_CHECK=PASS
 NONSPACE_VISIBLE_CHARS >= 20000
 学号段保留 8280 twips 制表位和冒号后的单下划线
 档号段保留 7920、8280 twips 制表位；无档号时仍有下划线占位
+第 2、3、15、16、17、18 段的行起点、下划线起点和下划线右端与范本渲染坐标一致
 ```
 
 声明、授权书和摘要页还应执行 Word COM 页序检查，至少确认：

@@ -109,25 +109,6 @@ function Copy-CoverParagraphFont {
     $dstRange.NoProofing = $true
 }
 
-function Get-DisplayWidth {
-    param([string]$Text)
-
-    $width = 0
-    foreach ($ch in $Text.ToCharArray()) {
-        $code = [int][char]$ch
-        if ($ch -eq "`t" -or $ch -eq "`r" -or $ch -eq "`n") {
-            continue
-        }
-        if ($ch -eq " " -or $code -lt 128) {
-            $width += 1
-        }
-        else {
-            $width += 2
-        }
-    }
-    return $width
-}
-
 function Get-ParagraphPlainText {
     param($Paragraph)
     return ([string]$Paragraph.Range.Text).TrimEnd([char]13, [char]7)
@@ -162,47 +143,11 @@ function Get-SuffixValue {
     return $text.Substring($index + $label.Length).Trim()
 }
 
-function Get-SuffixDisplayWidth {
-    param(
-        $Paragraph
-    )
-
-    $label = Get-FieldLabel -Paragraph $Paragraph
-    if ([string]::IsNullOrEmpty($label)) {
-        return 0
-    }
-    $text = Get-ParagraphPlainText -Paragraph $Paragraph
-    $index = $text.IndexOf($label)
-    if ($index -lt 0) {
-        return 0
-    }
-    $suffix = $text.Substring($index + $label.Length)
-    return Get-DisplayWidth -Text $suffix
-}
-
-function New-CenteredUnderlineSlot {
-    param(
-        [string]$Value,
-        [int]$SlotWidth
-    )
-
-    $cleanValue = $Value.Trim()
-    $valueWidth = Get-DisplayWidth -Text $cleanValue
-    if ($valueWidth -ge $SlotWidth) {
-        return $cleanValue
-    }
-
-    $pad = $SlotWidth - $valueWidth
-    $leftPad = [Math]::Floor($pad / 2)
-    $rightPad = $pad - $leftPad
-    return (" " * $leftPad) + $cleanValue + (" " * $rightPad)
-}
-
-function Set-FixedUnderlinedField {
+function Set-UnderlinedFieldSlotText {
     param(
         $Document,
         [int]$ParagraphIndex,
-        [int]$SlotWidth
+        [string]$SlotText
     )
 
     $paragraph = $Document.Paragraphs.Item($ParagraphIndex)
@@ -216,9 +161,6 @@ function Set-FixedUnderlinedField {
         return
     }
 
-    $value = Get-SuffixValue -Paragraph $paragraph
-    $slotText = New-CenteredUnderlineSlot -Value $value -SlotWidth $SlotWidth
-
     $suffixStart = $paragraph.Range.Start + $labelIndex + $label.Length
     $suffixEnd = $paragraph.Range.End - 1
     if ($suffixEnd -lt $suffixStart) {
@@ -226,7 +168,7 @@ function Set-FixedUnderlinedField {
     }
 
     $suffixRange = $Document.Range($suffixStart, $suffixEnd)
-    $suffixRange.Text = $slotText
+    $suffixRange.Text = $SlotText
 
     $paragraph = $Document.Paragraphs.Item($ParagraphIndex)
     $label = Get-FieldLabel -Paragraph $paragraph
@@ -252,21 +194,168 @@ function Set-FixedUnderlinedField {
     $paragraph.Range.NoProofing = $true
 }
 
-function Get-MaxSuffixWidth {
+function Get-InsertionPointGeometry {
     param(
         $Document,
-        [object[]]$Fields
+        [int]$Position
     )
 
-    $maxWidth = 0
-    foreach ($field in $Fields) {
-        $paragraph = $Document.Paragraphs.Item([int]$field.ParagraphIndex)
-        $width = Get-SuffixDisplayWidth -Paragraph $paragraph
-        if ($width -gt $maxWidth) {
-            $maxWidth = $width
+    $range = $Document.Range($Position, $Position)
+    $range.Select()
+
+    return [pscustomobject]@{
+        X = [double]$Document.Application.Selection.Information(5)
+        Y = [double]$Document.Application.Selection.Information(6)
+    }
+}
+
+function Get-FieldGeometry {
+    param(
+        $Document,
+        [int]$ParagraphIndex,
+        [string]$Value = ""
+    )
+
+    $paragraph = $Document.Paragraphs.Item($ParagraphIndex)
+    $text = Get-ParagraphPlainText -Paragraph $paragraph
+    $label = Get-FieldLabel -Paragraph $paragraph
+    if ([string]::IsNullOrEmpty($label)) {
+        return $null
+    }
+
+    $labelIndex = $text.IndexOf($label)
+    if ($labelIndex -lt 0) {
+        return $null
+    }
+
+    $suffixText = $text.Substring($labelIndex + $label.Length)
+    $lineStart = [int]$paragraph.Range.Start
+    $suffixStart = [int]($paragraph.Range.Start + $labelIndex + $label.Length)
+    $suffixEnd = [int]($paragraph.Range.End - 1)
+
+    $lineStartGeometry = Get-InsertionPointGeometry -Document $Document -Position $lineStart
+    $suffixStartGeometry = Get-InsertionPointGeometry -Document $Document -Position $suffixStart
+    $suffixEndGeometry = Get-InsertionPointGeometry -Document $Document -Position $suffixEnd
+
+    $valueStartX = $null
+    $valueEndX = $null
+    if (-not [string]::IsNullOrEmpty($Value)) {
+        $valueIndex = $suffixText.IndexOf($Value)
+        if ($valueIndex -ge 0) {
+            $valueStart = [int]($suffixStart + $valueIndex)
+            $valueEnd = [int]($valueStart + $Value.Length)
+            $valueStartGeometry = Get-InsertionPointGeometry -Document $Document -Position $valueStart
+            $valueEndGeometry = Get-InsertionPointGeometry -Document $Document -Position $valueEnd
+            $valueStartX = $valueStartGeometry.X
+            $valueEndX = $valueEndGeometry.X
         }
     }
-    return $maxWidth
+
+    return [pscustomobject]@{
+        ParagraphIndex = $ParagraphIndex
+        LineStartX = $lineStartGeometry.X
+        SuffixStartX = $suffixStartGeometry.X
+        SuffixEndX = $suffixEndGeometry.X
+        ValueStartX = $valueStartX
+        ValueEndX = $valueEndX
+    }
+}
+
+function Get-GeometryEdgeScore {
+    param(
+        $Geometry,
+        $TargetGeometry
+    )
+
+    if ($null -eq $Geometry -or $null -eq $TargetGeometry) {
+        return [double]::PositiveInfinity
+    }
+
+    return (
+        [Math]::Abs($Geometry.LineStartX - $TargetGeometry.LineStartX) +
+        [Math]::Abs($Geometry.SuffixStartX - $TargetGeometry.SuffixStartX) +
+        [Math]::Abs($Geometry.SuffixEndX - $TargetGeometry.SuffixEndX)
+    )
+}
+
+function Get-ValueCenterScore {
+    param(
+        $Geometry,
+        $TargetGeometry,
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrEmpty($Value)) {
+        return 0.0
+    }
+    if ($null -eq $Geometry.ValueStartX -or $null -eq $Geometry.ValueEndX) {
+        return 10000.0
+    }
+
+    $targetCenter = ($TargetGeometry.SuffixStartX + $TargetGeometry.SuffixEndX) / 2.0
+    $valueCenter = ($Geometry.ValueStartX + $Geometry.ValueEndX) / 2.0
+    return [Math]::Abs($valueCenter - $targetCenter)
+}
+
+function Set-MeasuredUnderlinedField {
+    param(
+        $Document,
+        [int]$ParagraphIndex,
+        $TargetGeometry,
+        [int]$MaxSpaces = 96
+    )
+
+    $paragraph = $Document.Paragraphs.Item($ParagraphIndex)
+    $value = Get-SuffixValue -Paragraph $paragraph
+    $cleanValue = $value.Trim()
+
+    $bestTotalSpaces = 0
+    $bestEdgeScore = [double]::PositiveInfinity
+
+    for ($totalSpaces = 0; $totalSpaces -le $MaxSpaces; $totalSpaces++) {
+        $leftPad = [Math]::Floor($totalSpaces / 2)
+        $rightPad = $totalSpaces - $leftPad
+        $slotText = (" " * $leftPad) + $cleanValue + (" " * $rightPad)
+        Set-UnderlinedFieldSlotText -Document $Document -ParagraphIndex $ParagraphIndex -SlotText $slotText
+        $geometry = Get-FieldGeometry -Document $Document -ParagraphIndex $ParagraphIndex -Value $cleanValue
+        $edgeScore = Get-GeometryEdgeScore -Geometry $geometry -TargetGeometry $TargetGeometry
+
+        if ($edgeScore -lt $bestEdgeScore) {
+            $bestEdgeScore = $edgeScore
+            $bestTotalSpaces = $totalSpaces
+        }
+    }
+
+    if ([string]::IsNullOrEmpty($cleanValue)) {
+        Set-UnderlinedFieldSlotText `
+            -Document $Document `
+            -ParagraphIndex $ParagraphIndex `
+            -SlotText (" " * $bestTotalSpaces)
+        return
+    }
+
+    $bestLeftPad = [Math]::Floor($bestTotalSpaces / 2)
+    $bestRightPad = $bestTotalSpaces - $bestLeftPad
+    $bestScore = [double]::PositiveInfinity
+
+    for ($leftPad = 0; $leftPad -le $bestTotalSpaces; $leftPad++) {
+        $rightPad = $bestTotalSpaces - $leftPad
+        $slotText = (" " * $leftPad) + $cleanValue + (" " * $rightPad)
+        Set-UnderlinedFieldSlotText -Document $Document -ParagraphIndex $ParagraphIndex -SlotText $slotText
+        $geometry = Get-FieldGeometry -Document $Document -ParagraphIndex $ParagraphIndex -Value $cleanValue
+        $edgeScore = Get-GeometryEdgeScore -Geometry $geometry -TargetGeometry $TargetGeometry
+        $centerScore = Get-ValueCenterScore -Geometry $geometry -TargetGeometry $TargetGeometry -Value $cleanValue
+        $score = $edgeScore + ($centerScore * 0.25)
+
+        if ($score -lt $bestScore) {
+            $bestScore = $score
+            $bestLeftPad = $leftPad
+            $bestRightPad = $rightPad
+        }
+    }
+
+    $finalSlotText = (" " * $bestLeftPad) + $cleanValue + (" " * $bestRightPad)
+    Set-UnderlinedFieldSlotText -Document $Document -ParagraphIndex $ParagraphIndex -SlotText $finalSlotText
 }
 
 function Normalize-FixedUnderlineFields {
@@ -286,14 +375,29 @@ function Normalize-FixedUnderlineFields {
         [pscustomobject]@{ ParagraphIndex = 18 }
     )
 
-    $identifierSlotWidth = Get-MaxSuffixWidth -Document $SampleDocument -Fields $identifierFields
-    $coverInfoSlotWidth = Get-MaxSuffixWidth -Document $SampleDocument -Fields $coverInfoFields
+    $targetGeometries = @{}
+    $SampleDocument.Activate()
+    foreach ($field in @($identifierFields + $coverInfoFields)) {
+        $paragraphIndex = [int]$field.ParagraphIndex
+        $targetGeometries[$paragraphIndex] = Get-FieldGeometry `
+            -Document $SampleDocument `
+            -ParagraphIndex $paragraphIndex
+    }
 
+    $TargetDocument.Activate()
     foreach ($field in $identifierFields) {
-        Set-FixedUnderlinedField -Document $TargetDocument -ParagraphIndex ([int]$field.ParagraphIndex) -SlotWidth $identifierSlotWidth
+        $paragraphIndex = [int]$field.ParagraphIndex
+        Set-MeasuredUnderlinedField `
+            -Document $TargetDocument `
+            -ParagraphIndex $paragraphIndex `
+            -TargetGeometry $targetGeometries[$paragraphIndex]
     }
     foreach ($field in $coverInfoFields) {
-        Set-FixedUnderlinedField -Document $TargetDocument -ParagraphIndex ([int]$field.ParagraphIndex) -SlotWidth $coverInfoSlotWidth
+        $paragraphIndex = [int]$field.ParagraphIndex
+        Set-MeasuredUnderlinedField `
+            -Document $TargetDocument `
+            -ParagraphIndex $paragraphIndex `
+            -TargetGeometry $targetGeometries[$paragraphIndex]
     }
 }
 

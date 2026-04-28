@@ -99,18 +99,6 @@ def underlined_suffix_text(p: etree._Element, label: str) -> str:
     return "".join(txt for r, txt in suffix_run_texts(p, label) if run_is_underlined(r))
 
 
-def display_width(text: str) -> int:
-    width = 0
-    for ch in text:
-        if ch in "\t\r\n":
-            continue
-        if ch == " " or ord(ch) < 128:
-            width += 1
-        else:
-            width += 2
-    return width
-
-
 def load_paragraphs(path: Path) -> list[etree._Element]:
     with ZipFile(path) as zf:
         root = etree.fromstring(zf.read("word/document.xml"))
@@ -201,46 +189,6 @@ def compare_line(
             failures.append(f"{label}: 下划线空格未使用 xml:space='preserve'")
 
 
-def compare_fixed_slot_group(
-    failures: list[str],
-    *,
-    group_name: str,
-    labels: list[str],
-    sample_paragraphs: list[etree._Element],
-    candidate_paragraphs: list[etree._Element],
-) -> None:
-    sample_widths: dict[str, int] = {}
-    candidate_widths: dict[str, int] = {}
-
-    for label in labels:
-        sample = find_line(sample_paragraphs, label)
-        candidate = find_line(candidate_paragraphs, label)
-        if sample is None:
-            failures.append(f"{group_name}/{label}: 范本中未找到字段行")
-            continue
-        if candidate is None:
-            failures.append(f"{group_name}/{label}: 候选文档中未找到字段行")
-            continue
-        sample_widths[label] = display_width(underlined_suffix_text(sample.paragraph, label))
-        candidate_widths[label] = display_width(underlined_suffix_text(candidate.paragraph, label))
-
-    if not sample_widths or not candidate_widths:
-        return
-
-    expected_width = max(sample_widths.values())
-    for label, actual_width in candidate_widths.items():
-        if actual_width != expected_width:
-            failures.append(
-                f"{group_name}/{label}: 下划线固定槽显示宽度 {actual_width}，应与范本同组宽度 {expected_width} 一致"
-            )
-
-    unique_candidate_widths = sorted(set(candidate_widths.values()))
-    if len(unique_candidate_widths) > 1:
-        failures.append(
-            f"{group_name}: 同组字段下划线宽度不一致，当前为 {', '.join(map(str, unique_candidate_widths))}"
-        )
-
-
 def run_checks(
     sample_path: Path,
     candidate_path: Path,
@@ -265,21 +213,6 @@ def run_checks(
         candidate_gap = candidate_archive.index - candidate_student.index
         if candidate_gap != sample_gap:
             failures.append(f"学号/档号: 两行间距结构 {candidate_gap} 与范本 {sample_gap} 不一致")
-
-    compare_fixed_slot_group(
-        failures,
-        group_name="学号/档号",
-        labels=["学号：", "档号："],
-        sample_paragraphs=sample_paragraphs,
-        candidate_paragraphs=candidate_paragraphs,
-    )
-    compare_fixed_slot_group(
-        failures,
-        group_name="封面信息栏",
-        labels=["院（系）名称：", "专业名称：", "学生姓名：", "指导教师："],
-        sample_paragraphs=sample_paragraphs,
-        candidate_paragraphs=candidate_paragraphs,
-    )
 
     return failures
 
