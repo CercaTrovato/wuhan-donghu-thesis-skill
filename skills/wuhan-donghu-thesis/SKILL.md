@@ -31,9 +31,10 @@ Full automation requires Windows with Microsoft Word COM. Non-Windows agents can
 
 1. Build an evidence ledger from task documents, proposal, source code, screenshots, database/schema, and figure/table references.
 2. Generate a structured `.docx`: real Word sections, paragraph styles, heading outline levels, PAGE fields, and TOC field. Do not handwrite page numbers or TOC dot leaders.
-3. Treat cover pages as template-level content. Prefer copying `范本.docx` first two pages with `scripts/copy_cover_from_sample.ps1`; only replace fields.
-4. Update TOC and page numbers with Microsoft Word, then freeze TOC/table XML with `scripts/update_toc_and_freeze.ps1`.
-5. Validate front matter, TOC, figures, tables, OpenXML schema, and outline before saying the draft is ready.
+3. Treat cover pages as template-level content. Prefer copying `范本.docx` first two pages with `scripts/copy_cover_from_sample.ps1`; only replace fields. The Chinese cover's top-right 学号/档号 lines must preserve the template underline runs and tab stops; 档号 may be blank only as an underlined placeholder, never as a deleted line.
+4. Generate enough content for the school length rule: final visible non-space text must be at least 20000 characters; target 22000-25000 for drafts to leave editing margin.
+5. Update TOC and page numbers with Microsoft Word, then freeze TOC/table XML with `scripts/update_toc_and_freeze.ps1`.
+6. Validate front matter, cover identifiers, length, TOC, figures, tables, OpenXML schema, and outline before saying the draft is ready.
 
 ## Bundled Scripts
 
@@ -55,6 +56,8 @@ python ".\scripts\verify_front_matter_layout.py" ".\论文初稿_封面修正版
   --title-en "English Thesis Title"
 
 python ".\scripts\verify_toc_xml.py" ".\论文初稿_封面修正版.docx"
+python ".\scripts\verify_cover_identifiers_and_length.py" ".\论文初稿_封面修正版.docx" `
+  --student-id "2022040731173"
 python ".\scripts\verify_figure_table_layout.py" ".\论文初稿_封面修正版.docx"
 officecli validate ".\论文初稿_封面修正版.docx"
 officecli view ".\论文初稿_封面修正版.docx" outline
@@ -75,6 +78,7 @@ python ".\scripts\verify_figure_table_layout.py" ".\论文初稿_封面修正版
 Fresh verification is mandatory. Minimum evidence:
 
 - `verify_front_matter_layout.py`: `FRONT_MATTER_CHECK=PASS`
+- `verify_cover_identifiers_and_length.py`: `COVER_IDENTIFIERS_AND_LENGTH_CHECK=PASS`, `NONSPACE_VISIBLE_CHARS >= 20000`
 - `verify_toc_xml.py`: `BAD_IND=0`, `BAD_SPACING=0`, `BAD_TABS=0`, `HARDCODED_LEADERS=0`
 - `verify_figure_table_layout.py`: `PASS: figure/table layout checks passed`
 - `officecli validate`: no schema errors in output
