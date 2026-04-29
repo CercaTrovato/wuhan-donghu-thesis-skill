@@ -35,8 +35,9 @@ Full automation requires Windows with Microsoft Word COM. Non-Windows agents can
 4. Generate enough content for the school length rule: final visible non-space text must be at least 20000 characters; target 22000-25000 for drafts to leave editing margin.
 5. Draw structure diagrams, flowcharts, module diagrams, deployment diagrams, and E-R diagrams in the reference style: pure white background, black text, black lines, no gray fill, no accent color, no grid, no dark theme. Use one font family consistently across generated diagrams.
 6. The total E-R diagram must cover all implemented system themes found in the evidence ledger. Distinguish physical tables from logical/business themes in the nearby text instead of omitting logical themes. For total E-R diagrams, emit an `er_layout.json` manifest and reject layouts with tangled lines, shared ports, connector crossings, relation diamonds overlapping boxes, or `1/n` labels inside boxes.
-7. Update TOC and page numbers with Microsoft Word, then freeze TOC/table XML with `scripts/update_toc_and_freeze.ps1`.
-8. Validate front matter, cover identifiers, length, TOC, figures, tables, diagram colors, project evidence coverage, OpenXML schema, and outline before saying the draft is ready.
+7. Code figures should look like clean IDE/editor screenshots when generated from snippets: white editor background, line numbers or editor chrome, readable monospaced code, and CJK font fallback for Chinese strings. Emit a `code_figures_manifest.json` and reject any source text or configured font set that can render Chinese as mojibake, boxes, or question marks.
+8. Update TOC and page numbers with Microsoft Word, then freeze TOC/table XML with `scripts/update_toc_and_freeze.ps1`.
+9. Validate front matter, cover identifiers, length, TOC, figures, tables, diagram colors, code figure text, project evidence coverage, OpenXML schema, and outline before saying the draft is ready.
 
 ## Bundled Scripts
 
@@ -91,6 +92,7 @@ python ".\scripts\verify_monochrome_diagrams.py" ".\论文初稿_封面修正版
 python ".\scripts\verify_project_content_completeness.py" ".\论文初稿_封面修正版.docx" `
   --requirements ".\scripts\examples\project_requirements_example.json"
 python ".\scripts\verify_er_layout_geometry.py" ".\generated\er_layout.json"
+python ".\scripts\verify_code_figure_text.py" ".\generated\code_figures_manifest.json"
 ```
 
 `verify_project_content_completeness.py` is intentionally data-driven. For a new thesis, create a fresh requirements JSON from that project's source code instead of reusing another project's API list or ER themes.
@@ -109,6 +111,7 @@ Fresh verification is mandatory. Minimum evidence:
 - `verify_monochrome_diagrams.py`: `MONOCHROME_DIAGRAM_CHECK=PASS`; all structural/process/E-R diagrams must be white-background, black-only diagrams
 - `verify_project_content_completeness.py`: `PROJECT_CONTENT_COMPLETENESS=PASS` with a project-specific requirements JSON generated from source evidence
 - `verify_er_layout_geometry.py`: `ER_LAYOUT_GEOMETRY_CHECK=PASS` for generated total E-R diagram manifests
+- `verify_code_figure_text.py`: `CODE_FIGURE_TEXT_CHECK=PASS` for generated code figure manifests containing non-ASCII strings
 - `officecli validate`: no schema errors in output
 - `officecli view ... outline`: heading tree includes expected 1 / 1.1 / 1.1.1 levels
 
@@ -123,6 +126,7 @@ If `officecli validate` prints schema errors while returning exit code 0, treat 
 - Table validation only checks database fields: validate every table in the whole paper.
 - Diagrams look close in Word but use gray fills or mixed fonts: run `verify_monochrome_diagrams.py` and re-render PDF/PNG for visual confirmation.
 - E-R diagrams look complete but visually tangled: generate a geometry manifest, keep each relationship on its own connection ports, leave visible line length between boxes and diamonds, and run `verify_er_layout_geometry.py` before inserting the image.
+- Code figures show boxes or `????` in Chinese strings: render with a CJK-capable fallback font, generate `code_figures_manifest.json`, run `verify_code_figure_text.py`, then inspect the rendered PDF/PNG page.
 - XML checks pass while a figure caption is split onto the next page: set picture paragraph `keep_with_next=True` and `keep_together=True`, set caption paragraph `keep_together=True`, then inspect rendered pages.
 - Total E-R diagrams become too simple because only physical tables are drawn: include all source-backed business themes and explain which nodes are logical themes rather than tables.
 - Generated content misses implemented functions: build and validate a project-specific requirements JSON listing API routes, views, models/tables, AI features, and required ER themes.

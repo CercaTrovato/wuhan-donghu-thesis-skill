@@ -139,6 +139,8 @@
 4. 输出 `er_layout.json`，至少包含 `boxes`、`relations[].diamond_box`、`relations[].segments`、`relations[].cardinality_boxes`。
 5. 运行 `scripts/verify_er_layout_geometry.py er_layout.json`，通过后再插入 `.docx`；脚本通过后仍要看 PDF/PNG 截图，确认线条不乱、文字不压框。
 
+代码图如果不是直接截取 IDE，也应生成成 IDE/编辑器截图风格：保留白色编辑区、行号或标题栏、等宽字体和适度语法高亮。若代码字符串中含中文，必须使用中文字体回退；生成脚本同时输出 `code_figures_manifest.json`，并运行 `scripts/verify_code_figure_text.py code_figures_manifest.json`，防止中文字符串在最终图片中变成 `????` 或缺字方框。
+
 ## 8. 内容生成顺序
 
 推荐写作顺序如下：
