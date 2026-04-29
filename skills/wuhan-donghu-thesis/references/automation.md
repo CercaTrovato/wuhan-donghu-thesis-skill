@@ -232,6 +232,9 @@ python ".\scripts\verify_toc_xml.py" ".\论文初稿_封面修正版.docx"
 python ".\scripts\verify_cover_identifiers_and_length.py" ".\论文初稿_封面修正版.docx" `
   --student-id "2022040731173"
 
+python ".\scripts\verify_body_text_length.py" ".\论文初稿_封面修正版.docx" `
+  --min 20000
+
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\verify_cover_rendered_alignment.ps1" `
   -SamplePath ".\范本.docx" `
   -CandidatePath ".\论文初稿_封面修正版.docx"
@@ -252,7 +255,7 @@ python ".\scripts\verify_project_content_completeness.py" ".\论文初稿_封面
 python ".\scripts\run_full_format_regression.py"
 ```
 
-该测试会从示例生成脚本开始，依次执行封面复制、目录更新、OpenXML 后处理、前置页检查、右上角学号/档号与字数检查、目录检查、图表检查、`officecli validate` 和 `officecli view outline`。如果 `officecli validate` 输出 schema 错误，即使命令退出码为 0，也必须视为失败继续修复。
+该测试会从示例生成脚本开始，依次执行封面复制、目录更新、OpenXML 后处理、前置页检查、右上角学号/档号检查、正文长度检查、目录检查、图表检查、`officecli validate` 和 `officecli view outline`。如果 `officecli validate` 输出 schema 错误，即使命令退出码为 0，也必须视为失败继续修复。
 
 `cover_replacements.json` 使用数组格式：
 
@@ -300,14 +303,20 @@ BAD_TABS = 0
 前两页无正文页眉和正文页码
 ```
 
-右上角学号/档号与字数还应执行 OpenXML 检查，至少确认：
+右上角学号/档号应执行 OpenXML 和渲染检查，至少确认：
 
 ```text
 COVER_IDENTIFIERS_AND_LENGTH_CHECK=PASS
-NONSPACE_VISIBLE_CHARS >= 20000
 学号段保留 8280 twips 制表位和冒号后的单下划线
 档号段保留 7920、8280 twips 制表位；无档号时仍有下划线占位
 第 2、3、15、16、17、18 段的行起点、下划线起点和下划线右端与范本渲染坐标一致
+```
+
+正文长度必须单独按正文口径检查，不能用全文计数替代：
+
+```text
+BODY_TEXT_LENGTH_CHECK=PASS
+BODY_NONSPACE_VISIBLE_CHARS >= 20000
 ```
 
 声明、授权书和摘要页还应执行 Word COM 页序检查，至少确认：
