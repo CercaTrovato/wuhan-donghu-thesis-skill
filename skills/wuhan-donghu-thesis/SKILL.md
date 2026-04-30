@@ -15,11 +15,12 @@ If the host platform provides DOCX and process helpers, use them. In Codex, pref
 
 1. Read the project’s `AGENTS.md` if present.
 2. Read `references/word-format.md` for global Word rules.
-3. Read `references/generation-workflow.md` before writing thesis content from task books, proposals, source code, screenshots, or project materials.
-4. If touching the first two pages, read `references/cover-pages.md`.
-5. If touching the table of contents, read `references/toc-page.md`.
-6. If using scripts or Word COM/OpenXML, read `references/automation.md`.
-7. If installing or running outside Codex, read `references/platform-compatibility.md`.
+3. Before using OfficeCLI for non-trivial `.docx` structure or formatting, search `references/officecli-1.0.66-full-reference.md` for the exact command/element schema. This includes headers/footers, sections, TOC, fields, page numbers, indentation, tables, numbering, images, raw XML, validation, and HTML previews.
+4. Read `references/generation-workflow.md` before writing thesis content from task books, proposals, source code, screenshots, or project materials.
+5. If touching the first two pages, read `references/cover-pages.md`.
+6. If touching the table of contents, read `references/toc-page.md`.
+7. If using scripts or Word COM/OpenXML, read `references/automation.md`.
+8. If installing or running outside Codex, read `references/platform-compatibility.md`.
 
 ## Platform Compatibility
 
