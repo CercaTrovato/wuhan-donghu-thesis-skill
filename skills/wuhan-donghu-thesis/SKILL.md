@@ -15,7 +15,7 @@ If the host platform provides DOCX and process helpers, use them. In Codex, pref
 
 1. Read the project’s `AGENTS.md` if present.
 2. Read `references/word-format.md` for global Word rules.
-3. Before using OfficeCLI for non-trivial `.docx` structure or formatting, search `references/officecli-1.0.66-full-reference.md` for the exact command/element schema. This includes headers/footers, sections, TOC, fields, page numbers, indentation, tables, numbering, images, raw XML, validation, and HTML previews.
+3. Before using OfficeCLI for non-trivial `.docx` structure or formatting, search `references/officecli-1.0.72-full-reference.md` for the exact command/element schema. This includes headers/footers, sections, TOC, fields, page numbers, indentation, tables, numbering, images, raw XML, validation, and HTML previews.
 4. Read `references/generation-workflow.md` before writing thesis content from task books, proposals, source code, screenshots, or project materials.
 5. If touching the first two pages, read `references/cover-pages.md`.
 6. If touching the table of contents, read `references/toc-page.md`.
